@@ -1,12 +1,11 @@
 # OpenWRT-DMZ
 This How to will show you how to set up a DMZ on an OpenWRT router.
 
-OpenWRT is an open source router firmware, based on Linux, running on a variety of hardware, even wellknown proprietary hardware. But there are also opensource hardware options including the official "OpenWRT One". OpenWRT provides sophisticated router capabilities and, very important, firewall capabilities. In addition more software can be installed to pprovied ad-blocking and other functionality. For more information, please visit https://www.openwrt.org.
+OpenWRT is an open source router firmware, based on Linux, running on a variety of hardware, even wellknown proprietary hardware. But there are also opensource hardware options including the official "OpenWRT One". OpenWRT provides sophisticated router capabilities and, very important, firewall capabilities. In addition more software can be installed to provide ad-blocking and other functionality. OpenWRT can be managed using the ssh or the graphic user interface called LuCI, which is used in this guide. For more information, please visit https://www.openwrt.org.
 
-Personally, I run OpenWRT on an "AVM Fritz!Box 4040" a rather widely used brand in Germany.
+Personally, I run OpenWRT on an "AVM Fritz!Box 4040". AVM is a rather widely used brand for homenetwork routers in Germany.
 
 ## Goals
-
 A DMZ (Demilitarized Zone) is a subnetwork (physical or logical) that contains the hosts (server) that need to e exposed to an untrusted network (e.g the internet). 
 
 Of course, you could put the server in your home network, but in case the server is compromised, an attacker could infiltrate the whole network from there. So this is not a good idea.
@@ -21,7 +20,6 @@ In Addition the device needs a minimum of RAM and CPU Power to manage all this.
 
 The AVM Fritz!Box 4040 has a dedicated WAN port and four LAN Ports (all 1 Gb), which can be assigned to different networks - which is just what I want.
 In addition, it is relatively cheap: the prices for used hardware start at around 30 €. 
-
 
 ## What I want to achieve
   1 - separate Subnetwork named DMZ on seperate Ethernet port
@@ -47,5 +45,22 @@ In addition, it is relatively cheap: the prices for used hardware start at aroun
   7 b) - Traffic to the corresponding ports needs to be allowed by the firewall
 
 ## 1 separate Subnetwork named DMZ on seperate Ethernet port
+In LuCI, go to Network -> interfaces. (Interfaces are not hardware ports, but software "connection points", connecting the hardware ports to the router creating the network.) 
 
-In 
+To configure the hardware ports, we jump to the devices tab. You see a Bridge device called br-lan. Click on configure. deselect the Bridge ports (hardware poorts) You want to set aside for your DMZ. In my case it is only "lan4". Click on save.
+
+Add a new device by clicking "Add device configuration...", select "bridge device" as the type, name it "br-dmz" and choose the bridge ports you removed from br-lan before.
+
+Now, on the Interfaces tab, Add a new Interface, name it "DMZ", select static address as protocoll and select your newly created "br-dmz" device. hit create Interface.  Next you need to provide a IPv4 address for the Port. This needs to be different from the address of the LAN. I chose 192.168.100.1. (The "1" at the end is usually used for the upstream end (router to the outside world) or the device managing the network. Both cases are true here.)
+
+In the "Firewall Settings" tab, we define a new zone called "DMZ"
+
+Click Save. The Network is successfully created.
+
+## 2 Firewall zone config
+
+## 3 DHCP Server Setup
+
+Network --> Interfaces; Edit "DMZ".
+
+In the "DHCP Server" tab, we setup the DHCP Server.
