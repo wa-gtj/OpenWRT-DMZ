@@ -1,5 +1,5 @@
 # OpenWRT-DMZ
-This How to will show you how to set up a DMZ on an OpenWRT router.
+This How-To will show you how to set up a DMZ on an OpenWRT router.
 
 OpenWRT is an open source router firmware, based on Linux, running on a variety of hardware, even wellknown proprietary hardware. But there are also opensource hardware options including the official "OpenWRT One". OpenWRT provides sophisticated router capabilities and, very important, firewall capabilities. In addition more software can be installed to provide ad-blocking and other functionality. OpenWRT can be managed using the ssh or the graphic user interface called LuCI, which is used in this guide. For more information, please visit https://www.openwrt.org.
 
