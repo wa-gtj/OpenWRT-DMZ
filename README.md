@@ -45,22 +45,125 @@ In addition, it is relatively cheap: the prices for used hardware start at aroun
   7 b) - Traffic to the corresponding ports needs to be allowed by the firewall
 
 ## 1 separate Subnetwork named DMZ on seperate Ethernet port
-In LuCI, go to Network -> interfaces. (Interfaces are not hardware ports, but software "connection points", connecting the hardware ports to the router creating the network.) 
+In LuCI, go to Network -> interfaces -> Devices
 
-To configure the hardware ports, we jump to the devices tab. You see a Bridge device called br-lan. Click on configure. deselect the Bridge ports (hardware poorts) You want to set aside for your DMZ. In my case it is only "lan4". Click on save.
+Configure "br-lan". Deselect the Bridge ports (hardware ports) that you want to set aside for your DMZ. In my case it is only "lan4". Click on save.
 
-Add a new device by clicking "Add device configuration...", select "bridge device" as the type, name it "br-dmz" and choose the bridge ports you removed from br-lan before.
+Add device configuration...", 
+- device type: "bridge device"
+- device name: "br-dmz" 
+- bridge ports: choose the ports you removed from br-lan before.
 
-Now, on the Interfaces tab, Add a new Interface, name it "DMZ", select static address as protocoll and select your newly created "br-dmz" device. hit create Interface.  Next you need to provide a IPv4 address for the Port. This needs to be different from the address of the LAN. I chose 192.168.100.1. (The "1" at the end is usually used for the upstream end (router to the outside world) or the device managing the network. Both cases are true here.)
+Interfaces tab -> Add a new Interface
+- name: "DMZ"
+- protocol: static address
+- device: "br-dmz"
 
-In the "Firewall Settings" tab, we define a new zone called "DMZ"
+-> hit create Interface.
+- IPv4 address: make one up in the pattern of 192.168.XXX.1 (XXX between 0 and 254) This needs to be different from the address of the LAN. I chose 192.168.100.1.
+- IPv4 netmask: 255.255.255.0
+- leave the rest as it is on this tab
+- "Firewall Settings" tab: define new zone called "DMZ"
 
-Click Save. The Network is successfully created.
+Click Save and "Save & Apply" at the bottom. The Network is successfully created.
 
 ## 2 Firewall zone config
+Go to Network -> Firewall
+
+The newly created Zone DMZ shows up at the bottom.
+Click Edit.
+- Input: reject
+- Output: reject
+- Intra zone forward: reject
+- leave the rest as it is on this tab. Especially, do NOT add a network to "Allow forward to destination zones" or "Allow forward from source zones". We want to allow only the minimum traffic
+
+Save & Apply. Now the DMZ is completely isolated and locked up. Hosts won't even get an IP-Address.
 
 ## 3 DHCP Server Setup
 
-Network --> Interfaces; Edit "DMZ".
+Network --> Interfaces; Edit "DMZ". In the "DHCP Server" tab, we setup the DHCP Server.
 
-In the "DHCP Server" tab, we setup the DHCP Server.
+Advanced Settings: Dynamic DHCP: uncheck (we want to assign only static addresses. -> Save
+
+Network -> DHCP and DNS -> Devices & Ports:
+
+Listen Interfaces: add checkmark before DMZ -> Save
+
+switch Tab to "Static leases". click "Add".
+- Hostname: (you can name it as you like, I prefer to use the subdomain I use for DynDNS, that should point to your Server, e.g. subdomain.domain.tld)
+- MAC address: Enter the MAC-address of your Server
+- IPv4 address: Enter an Address in the range of your DMZ-Interface. (change only the number after the last dot).
+
+Save & Apply
+
+The firewall still prohibits the Hosts on the DMZ network to aquire an IP address.
+
+Go to Network -> Firewall -> Traffic Rules. Click Add at the bottom.
+- Name: "DMZ - Allow DHCP"
+- Protocol: "UDP"
+- Source Zone: "DMZ"
+- Destination Zone: "Device (input)"
+- Destination Port: "67 547"
+- Action: "accept"
+
+-> Save and add another rule:
+- Name: "DMZ - Allow DHCP"
+- Protocol: "UDP"
+- Source Zone: "Device (output)"
+- Destination Zone: "DMZ"
+- Destination Port: "68 548"
+- Action: "accept"
+
+-> Save and add another rule:
+- Name: "DMZ - Allow ICMP"
+- Protocol: "ICMP"
+- Source Zone: "DMZ"
+- Destination Zone: "Device (input)"
+- Action: "accept"
+
+-> Save and add another rule:
+- Name: "DMZ - Allow ICMP"
+- Protocol: "ICMP"
+- Source Zone: "Device (output)"
+- Destination Zone: "DMZ"
+- Action: "accept"
+
+Save & Apply.
+
+We have created successfully four rules, so that Hosts on the DMZ Network get their IP from the router. disconnect the Ethernet-cable, wait ten seconds and reconnect it. It should work now. also basic funktions like ping should work. But any other traffic (like ssh or browsing is not working yet.
+
+## 4 Allow SSH for Management/Maintainance
+Add another rule at Network -> Firewall -> Traffic Rules. 
+- Name: "DMZ - Allow SSH from LAN only"
+- Protocol: "tcp"
+- Source Zone: "lan"
+- (Source address: if you want, you can specify the IP adresses that are allowed to connect to the hosts on DMZ)
+- Destination Zone: "DMZ"
+- Destination Port: "22" (or the port you configured the ssh-server to listen on)
+- Action: "accept"
+
+Save & Apply
+
+## 5 Allow updates based on HTTPS
+Debian updates via HTTPS. Make sure, that on your server, the /etc/apt/sources.list and files under /etc/apt/sources.list.d are pointing to https and not http.
+
+Add another rule at Network -> Firewall -> Traffic Rules. 
+- Name: "DMZ - Allow HTTPS"
+- Protocol: "tcp"
+- Source Zone: "DMZ"
+- Destination Zone: "wan"
+- Destination Port: "443 8443"
+- Action: "accept"
+- (On the Tab "Time Restrictions", you can restrict the ability to a certain time - useful if you schedule updates via cron.)
+
+-> Save and add another rule (ignore, if you have already a DNS-Server on your Server running - add the specific rules instead):
+- Name: "DMZ - Allow DNS-lookups"
+- Protocol: "tcp"
+- Source Zone: "DMZ"
+- Destination Zone: "Device (input)"
+- Destination Port: "53 853"
+- Action: "accept"
+
+Save & Apply
+
+
